@@ -14,6 +14,14 @@ services:
   express:
     depends_on:
       - mongodb
+    build: ./EXPRESS
+    ports:
+      - 3000:3000
+    volumes:
+      - ./EXPRESS:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
     
   mongodb:
     image: mongo:latest
@@ -25,6 +33,5 @@ services:
       MONGO_INITDB_ROOT_USERNAME: sigrae_admin
       MONGO_INITDB_ROOT_PASSWORD: fredmenson-1234
 
-    
 volumes:
   mongodb:
