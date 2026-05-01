@@ -17,6 +17,12 @@ const defaultForm = {
 function App() {
   const [campaignForm, setCampaignForm] = useState(defaultForm)
   const [campaign, setCampaign] = useState(null)
+  const [topbarVisible, setTopbarVisible] = useState(true)
+  const [inventoryOpen, setInventoryOpen] = useState(false)
+  const [inventoryEditorOpen, setInventoryEditorOpen] = useState(false)
+  const [inventoryForm, setInventoryForm] = useState(createEmptyInventoryForm())
+  const [editingInventoryId, setEditingInventoryId] = useState(null)
+  const [inventorySaving, setInventorySaving] = useState(false)
   const [draft, setDraft] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -157,9 +163,119 @@ function App() {
     await sendCampaignMessage(choice)
   }
 
+  async function saveInventoryItem(event) {
+    event.preventDefault()
+
+    if (!campaign?._id || !inventoryForm.name.trim()) {
+      return
+    }
+
+    setInventorySaving(true)
+    setError('')
+
+    try {
+      const isEditing = Boolean(editingInventoryId)
+      const endpoint = isEditing
+        ? `${API_BASE_URL}/api/campaigns/${campaign._id}/inventory/${editingInventoryId}`
+        : `${API_BASE_URL}/api/campaigns/${campaign._id}/inventory`
+
+      const response = await fetch(endpoint, {
+        method: isEditing ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...inventoryForm,
+          quantity: Number(inventoryForm.quantity),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save inventory item.')
+      }
+
+      setCampaign(data.campaign)
+      closeInventoryEditor()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setInventorySaving(false)
+    }
+  }
+
+  async function deleteInventoryItem(itemId) {
+    if (!campaign?._id) {
+      return
+    }
+
+    setInventorySaving(true)
+    setError('')
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/campaigns/${campaign._id}/inventory/${itemId}`,
+        {
+          method: 'DELETE',
+        },
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete inventory item.')
+      }
+
+      setCampaign(data.campaign)
+
+      if (editingInventoryId === itemId) {
+        closeInventoryEditor()
+      }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setInventorySaving(false)
+    }
+  }
+
+  function openInventoryModal() {
+    setInventoryOpen(true)
+  }
+
+  function closeInventoryModal() {
+    setInventoryOpen(false)
+  }
+
+  function beginInventoryCreate() {
+    setEditingInventoryId(null)
+    setInventoryForm(createEmptyInventoryForm())
+    setInventoryEditorOpen(true)
+  }
+
+  function beginInventoryEdit(item) {
+    setEditingInventoryId(item._id)
+    setInventoryForm({
+      name: item.name,
+      quantity: String(item.quantity),
+      status: item.status,
+      details: item.details || '',
+    })
+    setInventoryEditorOpen(true)
+  }
+
+  function closeInventoryEditor() {
+    setEditingInventoryId(null)
+    setInventoryForm(createEmptyInventoryForm())
+    setInventoryEditorOpen(false)
+  }
+
   function startFreshCampaign() {
     window.localStorage.removeItem(STORAGE_KEY)
     setCampaign(null)
+    setTopbarVisible(true)
+    setInventoryOpen(false)
+    closeInventoryEditor()
     setDraft('')
     setError('')
   }
@@ -264,20 +380,49 @@ function App() {
 
   return (
     <div className="session-shell">
-      <main className="session-stage">
-        <header className="story-header">
-          <div>
-            <p className="eyebrow">Live session</p>
-            <h2>{campaign.title}</h2>
-          </div>
-          <div className="campaign-actions">
-            <span className="campaign-badge">{campaign.characterName}</span>
-            <span className="campaign-badge">{campaign.tone}</span>
-            <button type="button" className="ghost" onClick={startFreshCampaign}>
-              New campaign
-            </button>
-          </div>
-        </header>
+      {!topbarVisible ? (
+        <button
+          type="button"
+          className="floating-action topbar-toggle"
+          onClick={() => setTopbarVisible(true)}
+          aria-label="Show controls"
+          title="Show controls"
+        >
+          <MenuIcon />
+        </button>
+      ) : null}
+
+      <main className={`session-stage ${topbarVisible ? 'with-topbar' : 'without-topbar'}`}>
+        {topbarVisible ? (
+          <header className="story-header fixed">
+            <div>
+              <p className="eyebrow">Live session</p>
+              <h2>{campaign.title}</h2>
+            </div>
+            <div className="campaign-actions">
+              <span className="campaign-badge">{campaign.characterName}</span>
+              <span className="campaign-badge">{campaign.tone}</span>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setTopbarVisible(false)}
+                aria-label="Hide top bar"
+                title="Hide top bar"
+              >
+                <MinimizeIcon />
+              </button>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={startFreshCampaign}
+                aria-label="Start new campaign"
+                title="New campaign"
+              >
+                <RefreshIcon />
+              </button>
+            </div>
+          </header>
+        ) : null}
 
         {error ? <div className="error-banner">{error}</div> : null}
 
@@ -326,8 +471,194 @@ function App() {
           </div>
         </form>
       </main>
+
+      <button
+        type="button"
+        className="floating-action inventory-fab"
+        onClick={openInventoryModal}
+        aria-label="Open inventory"
+        title="Inventory"
+      >
+        <BackpackIcon />
+      </button>
+
+      {inventoryOpen ? (
+        <div className="modal-backdrop" onClick={closeInventoryModal}>
+          <section
+            className="modal-panel inventory-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="inventory-header">
+              <div>
+                <p className="choice-label">Inventory</p>
+                <h3>Current carried gear</h3>
+              </div>
+              <div className="inventory-toolbar">
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={beginInventoryCreate}
+                  disabled={inventorySaving}
+                >
+                  Add new item
+                </button>
+                <button
+                  type="button"
+                  className="ghost inventory-close"
+                  onClick={closeInventoryModal}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {campaign.inventory?.length ? (
+              <div className="inventory-list">
+                {campaign.inventory.map((item) => (
+                  <article key={item._id} className="inventory-item">
+                    <div className="inventory-main">
+                      <strong>{item.name}</strong>
+                      <span className="campaign-badge">x{item.quantity}</span>
+                      <span className="campaign-badge">{item.status}</span>
+                    </div>
+                    {item.details ? <p className="inventory-details">{item.details}</p> : null}
+                    <div className="inventory-item-actions">
+                      <button
+                        type="button"
+                        className="ghost inventory-action"
+                        onClick={() => beginInventoryEdit(item)}
+                        disabled={inventorySaving}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost inventory-action danger"
+                        onClick={() => void deleteInventoryItem(item._id)}
+                        disabled={inventorySaving}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="inventory-empty">
+                Your character is not carrying any tracked items yet.
+              </p>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {inventoryEditorOpen ? (
+        <div className="modal-backdrop" onClick={closeInventoryEditor}>
+          <section
+            className="modal-panel inventory-editor-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="inventory-header">
+              <div>
+                <p className="choice-label">Inventory editor</p>
+                <h3>{editingInventoryId ? 'Edit item' : 'Add item'}</h3>
+              </div>
+              <button
+                type="button"
+                className="ghost inventory-close"
+                onClick={closeInventoryEditor}
+              >
+                Close
+              </button>
+            </div>
+
+            <form className="inventory-form" onSubmit={saveInventoryItem}>
+              <div className="inventory-form-grid">
+                <label>
+                  Item name
+                  <input
+                    value={inventoryForm.name}
+                    onChange={(event) =>
+                      setInventoryForm((current) => ({ ...current, name: event.target.value }))
+                    }
+                    placeholder="Rope"
+                    disabled={inventorySaving}
+                  />
+                </label>
+
+                <label>
+                  Quantity
+                  <input
+                    type="number"
+                    min="1"
+                    value={inventoryForm.quantity}
+                    onChange={(event) =>
+                      setInventoryForm((current) => ({ ...current, quantity: event.target.value }))
+                    }
+                    disabled={inventorySaving}
+                  />
+                </label>
+
+                <label>
+                  Status
+                  <select
+                    value={inventoryForm.status}
+                    onChange={(event) =>
+                      setInventoryForm((current) => ({ ...current, status: event.target.value }))
+                    }
+                    disabled={inventorySaving}
+                  >
+                    <option value="carried">Carried</option>
+                    <option value="equipped">Equipped</option>
+                    <option value="stored">Stored</option>
+                  </select>
+                </label>
+              </div>
+
+              <label>
+                Details
+                <input
+                  value={inventoryForm.details}
+                  onChange={(event) =>
+                    setInventoryForm((current) => ({ ...current, details: event.target.value }))
+                  }
+                  placeholder="Silk rope, 50 ft."
+                  disabled={inventorySaving}
+                />
+              </label>
+
+              <div className="inventory-form-actions">
+                <button type="submit" className="primary" disabled={inventorySaving}>
+                  {inventorySaving
+                    ? 'Saving...'
+                    : editingInventoryId
+                      ? 'Update item'
+                      : 'Add item'}
+                </button>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={closeInventoryEditor}
+                  disabled={inventorySaving}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </div>
   )
+}
+
+function createEmptyInventoryForm() {
+  return {
+    name: '',
+    quantity: '1',
+    status: 'carried',
+    details: '',
+  }
 }
 
 function extractChoices(content) {
@@ -344,3 +675,35 @@ function extractChoices(content) {
 }
 
 export default App
+
+function BackpackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 5.5a3 3 0 0 1 6 0V7h1.5A2.5 2.5 0 0 1 19 9.5v9A2.5 2.5 0 0 1 16.5 21h-9A2.5 2.5 0 0 1 5 18.5v-9A2.5 2.5 0 0 1 7.5 7H9V5.5Zm2 0V7h2V5.5a1 1 0 0 0-2 0ZM8 11a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H9a1 1 0 0 1-1-1Zm1.5 3.5h5a1 1 0 1 1 0 2h-5a1 1 0 1 1 0-2Z" />
+    </svg>
+  )
+}
+
+function MenuIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 7a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H6A1 1 0 0 1 5 7Zm0 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H6a1 1 0 0 1-1-1Zm1 4a1 1 0 1 0 0 2h12a1 1 0 1 0 0-2H6Z" />
+    </svg>
+  )
+}
+
+function MinimizeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 12.5A1.5 1.5 0 0 1 7.5 11h9a1.5 1.5 0 1 1 0 3h-9A1.5 1.5 0 0 1 6 12.5Z" />
+    </svg>
+  )
+}
+
+function RefreshIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 5a7 7 0 0 1 6.32 4H16.5a1 1 0 1 0 0 2H21a1 1 0 0 0 1-1V5.5a1 1 0 1 0-2 0v1.27A9 9 0 1 0 21 12a1 1 0 1 0-2 0 7 7 0 1 1-7-7Z" />
+    </svg>
+  )
+}

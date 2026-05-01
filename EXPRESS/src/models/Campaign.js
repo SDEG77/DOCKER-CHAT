@@ -47,6 +47,35 @@ const memorySchema = new mongoose.Schema(
   },
 );
 
+const inventoryItemSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    quantity: {
+      type: Number,
+      default: 1,
+      min: 0,
+    },
+    details: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    status: {
+      type: String,
+      enum: ['carried', 'equipped', 'stored'],
+      default: 'carried',
+    },
+  },
+  {
+    _id: true,
+    timestamps: true,
+  },
+);
+
 const campaignSchema = new mongoose.Schema(
   {
     title: {
@@ -85,6 +114,10 @@ const campaignSchema = new mongoose.Schema(
     },
     memories: {
       type: [memorySchema],
+      default: [],
+    },
+    inventory: {
+      type: [inventoryItemSchema],
       default: [],
     },
   },

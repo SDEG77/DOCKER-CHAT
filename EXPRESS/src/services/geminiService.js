@@ -14,6 +14,7 @@ async function generateDungeonMasterReply({
     .slice()
     .sort((a, b) => new Date(b.lastReinforcedAt) - new Date(a.lastReinforcedAt))
     .slice(0, 12);
+  const inventorySnapshot = campaign.inventory?.slice(0, 20) || [];
 
   const systemInstruction = [
     'You are an expert Dungeons & Dragons Dungeon Master running a one-player campaign.',
@@ -40,6 +41,16 @@ async function generateDungeonMasterReply({
           .map((memory, index) => `${index + 1}. [${memory.kind}] ${memory.content}`)
           .join('\n')
       : 'No stored memories yet.',
+    '',
+    'Current player inventory:',
+    inventorySnapshot.length > 0
+      ? inventorySnapshot
+          .map(
+            (item, index) =>
+              `${index + 1}. ${item.name} x${item.quantity}${item.details ? ` (${item.details})` : ''} [${item.status}]`,
+          )
+          .join('\n')
+      : 'No tracked inventory yet.',
     '',
     'Recent conversation:',
     recentMessages.length > 0
@@ -116,6 +127,76 @@ async function extractCampaignMemories({
   }
 }
 
+async function extractInventoryUpdates({
+  campaign,
+  userMessage,
+  assistantMessage,
+}) {
+  if (!isGeminiConfigured()) {
+    return [];
+  }
+
+  const currentInventory = campaign.inventory?.length
+    ? campaign.inventory
+        .map(
+          (item, index) =>
+            `${index + 1}. ${item.name} x${item.quantity}${item.details ? ` (${item.details})` : ''} [${item.status}]`,
+        )
+        .join('\n')
+    : 'Inventory is currently empty.';
+
+  const systemInstruction = [
+    'You maintain a Dungeons & Dragons player inventory ledger.',
+    'Return only JSON.',
+    'Only track concrete possessions the player character actually gains, consumes, equips, stores, gives away, loses, or destroys.',
+    'Ignore scenery, money not clearly acquired, and vague possibilities.',
+  ].join(' ');
+
+  const prompt = [
+    `Campaign title: ${campaign.title}`,
+    `Player character: ${campaign.characterName}`,
+    '',
+    'Current inventory:',
+    currentInventory,
+    '',
+    'Return JSON in this shape:',
+    '{"updates":[{"action":"add|remove|set","name":"item name","quantity":1,"details":"short optional note","status":"carried|equipped|stored"}]}',
+    '',
+    'Conversation chunk to inspect:',
+    `USER: ${userMessage}`,
+    `ASSISTANT: ${assistantMessage}`,
+  ].join('\n');
+
+  const rawText = await callGemini({
+    systemInstruction,
+    prompt,
+    temperature: 0.1,
+    responseMimeType: 'application/json',
+  });
+
+  try {
+    const cleaned = rawText.replace(/```json|```/gi, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (!Array.isArray(parsed.updates)) {
+      return [];
+    }
+
+    return parsed.updates
+      .filter((update) => typeof update.name === 'string' && update.name.trim())
+      .map((update) => ({
+        action: update.action,
+        name: update.name.trim(),
+        quantity: Number.isFinite(update.quantity) ? update.quantity : 1,
+        details: typeof update.details === 'string' ? update.details.trim() : '',
+        status: update.status,
+      }));
+  } catch (error) {
+    console.error('Failed to parse Gemini inventory response:', error);
+    return [];
+  }
+}
+
 async function callGemini({
   systemInstruction,
   prompt,
@@ -171,6 +252,7 @@ async function callGemini({
 
 module.exports = {
   extractCampaignMemories,
+  extractInventoryUpdates,
   generateDungeonMasterReply,
   isGeminiConfigured,
 };
