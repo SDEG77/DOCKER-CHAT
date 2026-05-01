@@ -1,7 +1,12 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 function isGeminiConfigured() {
   return Boolean(process.env.GEMINI_API_KEY);
+}
+
+function isGroqConfigured() {
+  return Boolean(process.env.GROQ_API_KEY);
 }
 
 async function generateDungeonMasterReply({
@@ -64,7 +69,7 @@ async function generateDungeonMasterReply({
       : `Player's latest action or statement: ${userMessage}`,
   ].join('\n');
 
-  return callGemini({
+  return callPreferredModel({
     systemInstruction,
     prompt,
     temperature: 0.9,
@@ -76,7 +81,7 @@ async function extractCampaignMemories({
   userMessage,
   assistantMessage,
 }) {
-  if (!isGeminiConfigured()) {
+  if (!isAnyProviderConfigured()) {
     return [];
   }
 
@@ -99,7 +104,7 @@ async function extractCampaignMemories({
     `ASSISTANT: ${assistantMessage}`,
   ].join('\n');
 
-  const rawText = await callGemini({
+  const rawText = await callPreferredModel({
     systemInstruction,
     prompt,
     temperature: 0.2,
@@ -122,7 +127,7 @@ async function extractCampaignMemories({
         source: memory.source || 'scene',
       }));
   } catch (error) {
-    console.error('Failed to parse Gemini memory response:', error);
+    console.error('Failed to parse memory extraction response:', error);
     return [];
   }
 }
@@ -132,7 +137,7 @@ async function extractInventoryUpdates({
   userMessage,
   assistantMessage,
 }) {
-  if (!isGeminiConfigured()) {
+  if (!isAnyProviderConfigured()) {
     return [];
   }
 
@@ -167,7 +172,7 @@ async function extractInventoryUpdates({
     `ASSISTANT: ${assistantMessage}`,
   ].join('\n');
 
-  const rawText = await callGemini({
+  const rawText = await callPreferredModel({
     systemInstruction,
     prompt,
     temperature: 0.1,
@@ -192,9 +197,64 @@ async function extractInventoryUpdates({
         status: update.status,
       }));
   } catch (error) {
-    console.error('Failed to parse Gemini inventory response:', error);
+    console.error('Failed to parse inventory extraction response:', error);
     return [];
   }
+}
+
+async function callPreferredModel({
+  systemInstruction,
+  prompt,
+  temperature,
+  responseMimeType,
+}) {
+  const providers = [
+    {
+      name: 'gemini',
+      configured: isGeminiConfigured(),
+      fn: callGemini,
+    },
+    {
+      name: 'groq',
+      configured: isGroqConfigured(),
+      fn: callGroq,
+    },
+  ].filter((provider) => provider.configured);
+
+  if (providers.length === 0) {
+    throw new Error(
+      'No AI provider is configured. Add GEMINI_API_KEY or GROQ_API_KEY to EXPRESS/.env.',
+    );
+  }
+
+  let lastError;
+
+  for (let index = 0; index < providers.length; index += 1) {
+    const provider = providers[index];
+
+    try {
+      return await provider.fn({
+        systemInstruction,
+        prompt,
+        temperature,
+        responseMimeType,
+      });
+    } catch (error) {
+      lastError = error;
+      const shouldFallback = index < providers.length - 1 && isQuotaOrRetryableProviderError(error);
+
+      console.error(`${provider.name} request failed:`, error.message);
+
+      if (shouldFallback) {
+        console.warn(`Falling back from ${provider.name} to ${providers[index + 1].name}.`);
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw lastError;
 }
 
 async function callGemini({
@@ -234,7 +294,10 @@ async function callGemini({
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Gemini API error: ${response.status} ${errorText}`);
+    const error = new Error(`Gemini API error: ${response.status} ${errorText}`);
+    error.status = response.status;
+    error.provider = 'gemini';
+    throw error;
   }
 
   const data = await response.json();
@@ -250,9 +313,87 @@ async function callGemini({
   return text;
 }
 
+async function callGroq({
+  systemInstruction,
+  prompt,
+  temperature,
+}) {
+  if (!isGroqConfigured()) {
+    throw new Error('GROQ_API_KEY is missing.');
+  }
+
+  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const response = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      stream: false,
+      temperature,
+      messages: [
+        {
+          role: 'system',
+          content: systemInstruction,
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    const error = new Error(`Groq API error: ${response.status} ${errorText}`);
+    error.status = response.status;
+    error.provider = 'groq';
+    throw error;
+  }
+
+  const data = await response.json();
+  const text = data.choices?.[0]?.message?.content?.trim();
+
+  if (!text) {
+    throw new Error('Groq returned an empty response.');
+  }
+
+  return text;
+}
+
+function isAnyProviderConfigured() {
+  return isGeminiConfigured() || isGroqConfigured();
+}
+
+function isQuotaOrRetryableProviderError(error) {
+  if (!error) {
+    return false;
+  }
+
+  if ([429, 500, 502, 503, 504].includes(error.status)) {
+    return true;
+  }
+
+  const message = String(error.message || '').toLowerCase();
+
+  return (
+    message.includes('quota') ||
+    message.includes('rate limit') ||
+    message.includes('resource_exhausted') ||
+    message.includes('too many requests') ||
+    message.includes('exceeded your current quota') ||
+    message.includes('usage limit')
+  );
+}
+
 module.exports = {
   extractCampaignMemories,
   extractInventoryUpdates,
   generateDungeonMasterReply,
+  isAnyProviderConfigured,
   isGeminiConfigured,
+  isGroqConfigured,
 };

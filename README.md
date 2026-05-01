@@ -8,7 +8,7 @@ The app lets a user start a campaign, describe their character and campaign prem
 
 1. Create or update `EXPRESS/.env`.
 2. Make sure it contains your Mongo connection plus your Gemini settings.
-3. Add your Gemini API key:
+3. Add your Gemini API key and, if you want automatic quota fallback, your Groq API key too:
 
 ```env
 MONGO_URI=mongodb://sigrae_admin:fredmenson-1234@mongodb:27017/docker-chat?authSource=admin
@@ -16,6 +16,8 @@ PORT=3000
 CLIENT_ORIGIN=http://localhost:5173
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-2.5-flash
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
 1. Start your Docker engine and from the project root, start the app by typing this in the terminal:
@@ -42,6 +44,7 @@ docker compose down -v
 
 - Uses a React frontend as the player-facing campaign interface.
 - Uses an Express backend to manage campaigns, chat messages, and Gemini API calls.
+- Automatically falls back to Groq if Gemini hits quota or rate-limit style failures and Groq credentials are configured.
 - Uses MongoDB to persist campaign state, including chat history and important remembered facts.
 - Uses Docker Compose to run the full stack together.
 

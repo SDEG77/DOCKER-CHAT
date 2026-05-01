@@ -8,7 +8,9 @@ const {
   generateDungeonMasterReply,
   extractCampaignMemories,
   extractInventoryUpdates,
+  isAnyProviderConfigured,
   isGeminiConfigured,
+  isGroqConfigured,
 } = require('./src/services/geminiService');
 
 const app = express();
@@ -28,7 +30,9 @@ app.get('/', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
+    aiProviderConfigured: isAnyProviderConfigured(),
     geminiConfigured: isGeminiConfigured(),
+    groqConfigured: isGroqConfigured(),
   });
 });
 
@@ -89,7 +93,7 @@ app.post('/api/campaigns', async (req, res) => {
 
     let assistantMessage;
 
-    if (isGeminiConfigured()) {
+    if (isAnyProviderConfigured()) {
       const openingScene = await generateDungeonMasterReply({
         campaign,
         userMessage:
@@ -105,7 +109,7 @@ app.post('/api/campaigns', async (req, res) => {
       assistantMessage = {
         role: 'assistant',
         content:
-          'The campaign is prepared. Add your Gemini API key to `EXPRESS/.env`, then send your first action to let the Dungeon Master take over.',
+          'The campaign is prepared. Add a valid `GEMINI_API_KEY` or `GROQ_API_KEY` to `EXPRESS/.env`, then send your first action to let the Dungeon Master take over.',
       };
     }
 
@@ -155,12 +159,12 @@ app.post('/api/campaigns/:campaignId/messages', async (req, res) => {
       content: message,
     });
 
-    if (!isGeminiConfigured()) {
+    if (!isAnyProviderConfigured()) {
       await campaign.save();
       return res.status(503).json({
         campaign,
         error:
-          'Gemini is not configured yet. Add GEMINI_API_KEY to EXPRESS/.env and restart the Express container.',
+          'No AI provider is configured yet. Add GEMINI_API_KEY or GROQ_API_KEY to EXPRESS/.env and restart the Express container.',
       });
     }
 
