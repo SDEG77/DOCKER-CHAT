@@ -312,11 +312,12 @@ async function callGemini({
     throw new Error('Gemini returned an empty response.');
   }
 
-  return {
-    provider: 'gemini',
-    model,
-    text,
-  };
+      return {
+        provider: 'gemini',
+        model,
+        mode: 'primary',
+        text,
+      };
 }
 
 async function callGroq({
@@ -328,50 +329,79 @@ async function callGroq({
     throw new Error('GROQ_API_KEY is missing.');
   }
 
-  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-  const response = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model,
-      stream: false,
-      temperature,
-      messages: [
-        {
-          role: 'system',
-          content: systemInstruction,
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    }),
-  });
+  const groqModels = getGroqModelChain();
+  let lastError;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    const error = new Error(`Groq API error: ${response.status} ${errorText}`);
-    error.status = response.status;
-    error.provider = 'groq';
-    throw error;
+  for (let index = 0; index < groqModels.length; index += 1) {
+    const model = groqModels[index];
+
+    try {
+      const response = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model,
+          stream: false,
+          temperature,
+          messages: [
+            {
+              role: 'system',
+              content: systemInstruction,
+            },
+            {
+              role: 'user',
+              content: prompt,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        const error = new Error(`Groq API error: ${response.status} ${errorText}`);
+        error.status = response.status;
+        error.provider = 'groq';
+        error.model = model;
+        throw error;
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content?.trim();
+
+      if (!text) {
+        const error = new Error(`Groq returned an empty response for model ${model}.`);
+        error.provider = 'groq';
+        error.model = model;
+        throw error;
+      }
+
+      return {
+        provider: 'groq',
+        model,
+        mode: index === 0 ? 'primary' : 'backup',
+        text,
+      };
+    } catch (error) {
+      lastError = error;
+
+      const shouldTryNextModel =
+        index < groqModels.length - 1 && isGroqModelFallbackError(error);
+
+      console.error(`groq model ${model} failed:`, error.message);
+
+      if (shouldTryNextModel) {
+        console.warn(`Falling back from Groq model ${model} to ${groqModels[index + 1]}.`);
+        continue;
+      }
+
+      throw error;
+    }
   }
 
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content?.trim();
-
-  if (!text) {
-    throw new Error('Groq returned an empty response.');
-  }
-
-  return {
-    provider: 'groq',
-    model,
-    text,
-  };
+  throw lastError;
 }
 
 function isAnyProviderConfigured() {
@@ -397,6 +427,45 @@ function isQuotaOrRetryableProviderError(error) {
     message.includes('exceeded your current quota') ||
     message.includes('usage limit')
   );
+}
+
+function isGroqModelFallbackError(error) {
+  if (!error) {
+    return false;
+  }
+
+  if ([400, 403, 404, 408, 409, 429, 500, 502, 503, 504].includes(error.status)) {
+    return true;
+  }
+
+  const message = String(error.message || '').toLowerCase();
+
+  return (
+    message.includes('rate_limit_exceeded') ||
+    message.includes('rate limit') ||
+    message.includes('tokens per day') ||
+    message.includes('model') ||
+    message.includes('invalid model') ||
+    message.includes('not found') ||
+    message.includes('permission') ||
+    message.includes('unsupported')
+  );
+}
+
+function getGroqModelChain() {
+  const primaryModel = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const fallbackModels = (process.env.GROQ_FALLBACK_MODELS || '')
+    .split(',')
+    .map((model) => model.trim())
+    .filter(Boolean);
+
+  const defaultFallbackModels = [
+    'openai/gpt-oss-20b',
+    'llama-3.1-8b-instant',
+    'openai/gpt-oss-120b',
+  ];
+
+  return [...new Set([primaryModel, ...fallbackModels, ...defaultFallbackModels])];
 }
 
 module.exports = {

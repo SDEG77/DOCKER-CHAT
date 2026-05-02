@@ -28,6 +28,7 @@ const defaultForm = {
 function App() {
   const [campaignForm, setCampaignForm] = useState(defaultForm)
   const [campaign, setCampaign] = useState(null)
+  const [aiInfoOpen, setAiInfoOpen] = useState(false)
   const [topbarVisible, setTopbarVisible] = useState(true)
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [inventoryEditorOpen, setInventoryEditorOpen] = useState(false)
@@ -325,98 +326,109 @@ function App() {
   if (!campaign) {
     return (
       <div className="intro-shell">
-        <section className="intro-panel">
-          <p className="eyebrow">AI Dungeon Master</p>
-          <h1>Start a campaign worth remembering.</h1>
-          <p className="lede">
-            Spin up a solo D&amp;D adventure with a persistent AI Dungeon Master
-            and a cleaner tabletop-style interface.
-          </p>
-
-          <form className="campaign-form" onSubmit={createCampaign}>
-            <label>
-              Campaign title
-              <input
-                value={campaignForm.title}
-                onChange={(event) =>
-                  setCampaignForm((current) => ({ ...current, title: event.target.value }))
-                }
-                placeholder="The Ashen Crown"
-              />
-            </label>
-
-            <label>
-              Your name
-              <input
-                value={campaignForm.playerName}
-                onChange={(event) =>
-                  setCampaignForm((current) => ({ ...current, playerName: event.target.value }))
-                }
-                placeholder="Aria"
-              />
-            </label>
-
-            <label>
-              Character name
-              <input
-                value={campaignForm.characterName}
-                onChange={(event) =>
-                  setCampaignForm((current) => ({
-                    ...current,
-                    characterName: event.target.value,
-                  }))
-                }
-                placeholder="Seraphine Vale"
-              />
-            </label>
-
-            <label>
-              Campaign premise
-              <textarea
-                rows="4"
-                value={campaignForm.campaignIdea}
-                onChange={(event) =>
-                  setCampaignForm((current) => ({
-                    ...current,
-                    campaignIdea: event.target.value,
-                  }))
-                }
-                placeholder="What kind of adventure should the DM run?"
-              />
-            </label>
-
-            <div className="form-row">
-              <label>
-                Tone
-                <textarea
-                  rows="4"
-                  value={campaignForm.tone}
-                  onChange={(event) =>
-                    setCampaignForm((current) => ({ ...current, tone: event.target.value }))
-                  }
-                  placeholder="Describe the tone in more detail, like grim political fantasy, cozy adventure, tragic heroism, or eerie mystery..."
-                />
-              </label>
-
-              <label>
-                Play style
-                <textarea
-                  rows="4"
-                  value={campaignForm.playStyle}
-                  onChange={(event) =>
-                    setCampaignForm((current) => ({ ...current, playStyle: event.target.value }))
-                  }
-                  placeholder="Describe how you want the campaign to play, like roleplay-heavy, tactical combat, slow-burn mystery, exploration, or character drama..."
-                />
-              </label>
-            </div>
-
-            <button type="submit" className="primary" disabled={bootingCampaign}>
-              {bootingCampaign ? 'Summoning the campaign...' : 'Start campaign'}
+        <div className="intro-layout">
+          <div className="intro-actions">
+            <button type="button" className="ghost" onClick={() => setAiInfoOpen(true)}>
+              View AIs
             </button>
-          </form>
-        </section>
+          </div>
 
+          <section className="intro-panel">
+            <p className="eyebrow">AI Dungeon Master</p>
+            <h1>Start a campaign worth remembering.</h1>
+            <p className="lede">
+              Spin up a solo D&amp;D adventure with a persistent AI Dungeon Master
+              and a cleaner tabletop-style interface.
+            </p>
+
+            <form className="campaign-form" onSubmit={createCampaign}>
+              <label>
+                Campaign title
+                <input
+                  value={campaignForm.title}
+                  onChange={(event) =>
+                    setCampaignForm((current) => ({ ...current, title: event.target.value }))
+                  }
+                  placeholder="The Ashen Crown"
+                />
+              </label>
+
+              <label>
+                Your name
+                <input
+                  value={campaignForm.playerName}
+                  onChange={(event) =>
+                    setCampaignForm((current) => ({ ...current, playerName: event.target.value }))
+                  }
+                  placeholder="Aria"
+                />
+              </label>
+
+              <label>
+                Character name
+                <input
+                  value={campaignForm.characterName}
+                  onChange={(event) =>
+                    setCampaignForm((current) => ({
+                      ...current,
+                      characterName: event.target.value,
+                    }))
+                  }
+                  placeholder="Seraphine Vale"
+                />
+              </label>
+
+              <label>
+                Campaign premise
+                <textarea
+                  rows="4"
+                  value={campaignForm.campaignIdea}
+                  onChange={(event) =>
+                    setCampaignForm((current) => ({
+                      ...current,
+                      campaignIdea: event.target.value,
+                    }))
+                  }
+                  placeholder="What kind of adventure should the DM run?"
+                />
+              </label>
+
+              <div className="form-row">
+                <label>
+                  Tone
+                  <textarea
+                    rows="4"
+                    value={campaignForm.tone}
+                    onChange={(event) =>
+                      setCampaignForm((current) => ({ ...current, tone: event.target.value }))
+                    }
+                    placeholder="Describe the tone in more detail, like grim political fantasy, cozy adventure, tragic heroism, or eerie mystery..."
+                  />
+                </label>
+
+                <label>
+                  Play style
+                  <textarea
+                    rows="4"
+                    value={campaignForm.playStyle}
+                    onChange={(event) =>
+                      setCampaignForm((current) => ({ ...current, playStyle: event.target.value }))
+                    }
+                    placeholder="Describe how you want the campaign to play, like roleplay-heavy, tactical combat, slow-burn mystery, exploration, or character drama..."
+                  />
+                </label>
+              </div>
+
+              <button type="submit" className="primary" disabled={bootingCampaign}>
+                {bootingCampaign ? 'Summoning the campaign...' : 'Start campaign'}
+              </button>
+            </form>
+          </section>
+
+          <p className="intro-credit">Sigrae Derf Gabriel</p>
+        </div>
+
+        <AiInfoModal open={aiInfoOpen} onClose={() => setAiInfoOpen(false)} />
         <Toast toast={toast} onClose={dismissToast} onViewError={openErrorViewer} />
         <ErrorViewer
           open={errorViewerOpen}
@@ -536,6 +548,7 @@ function App() {
           <span className="ai-indicator-label">Current AI</span>
           <strong>{formatAiProvider(campaign)}</strong>
           <span className="ai-indicator-model">{campaign.activeAiModel || 'No active model yet'}</span>
+          <span className="ai-indicator-mode">{formatAiMode(campaign)}</span>
         </div>
       </div>
 
@@ -772,12 +785,68 @@ function ErrorViewer({ open, detail, onClose }) {
   )
 }
 
+function AiInfoModal({ open, onClose }) {
+  if (!open) {
+    return null
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+        <section className="modal-panel ai-info-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="inventory-header">
+            <div>
+              <p className="choice-label">Available AI providers</p>
+              <h3>Providers used by this project</h3>
+          </div>
+          <button type="button" className="ghost inventory-close" onClick={onClose}>
+            Close
+          </button>
+        </div>
+
+          <div className="ai-provider-grid">
+            <article className="ai-provider-card">
+              <p className="choice-label">Primary</p>
+              <h4>Gemini</h4>
+              <p className="ai-provider-model">Default model: `gemini-2.5-flash`</p>
+              <p className="ai-provider-copy">
+                Used as the first-choice Dungeon Master model before any fallback provider is tried.
+              </p>
+            </article>
+
+            <article className="ai-provider-card">
+              <p className="choice-label">Fallback</p>
+              <h4>Groq</h4>
+              <p className="ai-provider-model">Primary Groq model: `llama-3.3-70b-versatile`</p>
+              <p className="ai-provider-copy">
+                Can also rotate through backup Groq models like `openai/gpt-oss-20b`, `llama-3.1-8b-instant`, and `openai/gpt-oss-120b`.
+              </p>
+            </article>
+          </div>
+        </section>
+      </div>
+    )
+}
+
 function formatAiProvider(campaign) {
   if (!campaign?.activeAiProvider) {
     return 'No AI provider yet'
   }
 
   return campaign.activeAiProvider === 'groq' ? 'Groq' : 'Gemini'
+}
+
+function formatAiMode(campaign) {
+  if (!campaign?.activeAiProvider) {
+    return 'No active provider state yet'
+  }
+
+  if (campaign.activeAiProvider === 'groq') {
+    return campaign.activeAiMode === 'backup'
+      ? 'Groq backup model'
+      : 'Groq primary model'
+  }
+
+  return 'Primary provider'
 }
 
 function createEmptyInventoryForm() {

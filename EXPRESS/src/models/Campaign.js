@@ -118,6 +118,11 @@ const campaignSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    activeAiMode: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     lastAiAt: {
       type: Date,
       default: null,

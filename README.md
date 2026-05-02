@@ -19,6 +19,7 @@ GEMINI_MODEL=gemini-2.5-flash
 
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_FALLBACK_MODELS=openai/gpt-oss-20b,llama-3.1-8b-instant,openai/gpt-oss-120b
 ```
 
 3. From the project root, build and start the stack:
@@ -93,6 +94,12 @@ The backend tries providers in this order:
 
 If Gemini returns quota, rate-limit, or similar retryable provider errors, the backend retries the request with Groq automatically.
 
+Within Groq itself, the backend can also try multiple models in sequence:
+
+1. `GROQ_MODEL`
+2. models listed in `GROQ_FALLBACK_MODELS`
+3. built-in defaults if no custom fallback list is provided
+
 This fallback is used for:
 
 - DM replies
@@ -148,3 +155,7 @@ Each campaign stores:
 - Docker Compose
 - Gemini API
 - Groq API
+
+## Credit
+
+Created by Sigrae Derf Gabriel.

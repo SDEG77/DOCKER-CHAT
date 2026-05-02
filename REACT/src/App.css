@@ -9,6 +9,10 @@
   place-items: center;
 }
 
+.intro-layout {
+  width: min(920px, 100%);
+}
+
 .intro-panel,
 .message,
 .composer,
@@ -23,7 +27,6 @@
 }
 
 .intro-panel {
-  width: min(920px, 100%);
   padding: 36px;
   background:
     radial-gradient(circle at top, rgba(249, 203, 132, 0.18), transparent 28%),
@@ -47,6 +50,69 @@
   display: grid;
   gap: 16px;
   margin-top: 28px;
+}
+
+.intro-actions {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 35;
+}
+
+.intro-credit {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 35;
+  margin: 0;
+  padding: 10px 14px;
+  text-align: right;
+  color: var(--text-soft);
+  font-size: 0.94rem;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: rgba(27, 18, 13, 0.92);
+  backdrop-filter: blur(14px);
+}
+
+.ai-info-modal {
+  width: min(560px, 100%);
+}
+
+.ai-provider-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.ai-provider-card {
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(218, 188, 138, 0.16);
+  background:
+    radial-gradient(circle at top left, rgba(241, 187, 99, 0.1), transparent 58%),
+    rgba(255, 248, 232, 0.04);
+}
+
+.ai-provider-card h4 {
+  margin: 0 0 8px;
+  color: var(--text-strong);
+  font-size: 1.15rem;
+}
+
+.ai-provider-model {
+  margin: 0 0 10px;
+  color: var(--accent-soft);
+  font-family: var(--mono);
+  font-size: 0.92rem;
+}
+
+.ai-provider-copy {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.intro-info {
+  margin-top: 24px;
 }
 
 .campaign-form label,
@@ -352,6 +418,11 @@
   word-break: break-word;
 }
 
+.ai-indicator-mode {
+  color: var(--accent-soft);
+  font-size: 0.82rem;
+}
+
 .chat-log {
   min-height: 0;
   overflow-y: auto;
@@ -611,6 +682,7 @@
     grid-template-columns: 1fr;
   }
 
+
   .session-stage.with-topbar {
     min-height: calc(100vh - 36px);
     padding-top: 164px;
@@ -631,6 +703,11 @@
   }
 
   .topbar-toggle {
+    top: 12px;
+    right: 18px;
+  }
+
+  .intro-actions {
     top: 12px;
     right: 18px;
   }
@@ -663,6 +740,12 @@
     left: 18px;
     bottom: 18px;
     width: calc(100vw - 36px);
+    max-width: calc(100vw - 36px);
+  }
+
+  .intro-credit {
+    right: 18px;
+    bottom: 18px;
     max-width: calc(100vw - 36px);
   }
 }

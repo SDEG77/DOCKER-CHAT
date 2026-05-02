@@ -103,6 +103,7 @@ app.post('/api/campaigns', async (req, res) => {
 
       campaign.activeAiProvider = openingScene.provider;
       campaign.activeAiModel = openingScene.model;
+      campaign.activeAiMode = openingScene.mode;
       campaign.lastAiAt = new Date();
 
       assistantMessage = {
@@ -180,6 +181,7 @@ app.post('/api/campaigns/:campaignId/messages', async (req, res) => {
 
     campaign.activeAiProvider = reply.provider;
     campaign.activeAiModel = reply.model;
+    campaign.activeAiMode = reply.mode;
     campaign.lastAiAt = new Date();
 
     campaign.messages.push({
