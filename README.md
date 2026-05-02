@@ -1,111 +1,150 @@
-# D&D Gemini Dungeon Master
+# D&D AI Dungeon Master
 
-This project is a Dockerized MERN app that turns Gemini into a persistent Dungeons & Dragons Dungeon Master for a solo player.
+This project is a Dockerized MERN app for solo Dungeons & Dragons roleplay.
 
-The app lets a user start a campaign, describe their character and campaign premise, and then play through the adventure in a chat interface. The AI responds as the Dungeon Master, keeps the story moving, and stores important campaign facts in MongoDB so the session can maintain continuity over time.
+The player creates a campaign, defines a character and premise, and then plays through the story in a chat interface where the AI acts as the Dungeon Master. Campaign state is stored in MongoDB so the story, memory, and inventory can persist across sessions.
 
 ## How To Run
 
 1. Create or update `EXPRESS/.env`.
-2. Make sure it contains your Mongo connection plus your Gemini settings.
-3. Add your Gemini API key and, if you want automatic quota fallback, your Groq API key too:
+2. Add your MongoDB config, Gemini config, and optional Groq fallback config.
 
 ```env
 MONGO_URI=mongodb://sigrae_admin:fredmenson-1234@mongodb:27017/docker-chat?authSource=admin
 PORT=3000
 CLIENT_ORIGIN=http://localhost:5173
+
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-2.5-flash
+
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
-1. Start your Docker engine and from the project root, start the app by typing this in the terminal:
+3. From the project root, build and start the stack:
 
 ```bash
 docker compose up --build
 ```
 
-5. Open the frontend at `http://localhost:5173`.
-6. The Express API will be available at `http://localhost:3000`.
-7. MongoDB will be available at `mongodb://localhost:27017`.
+4. Open the frontend at `http://localhost:5173`.
+5. The Express API runs at `http://localhost:3000`.
+6. MongoDB is exposed at `mongodb://localhost:27017`.
 
 Useful commands:
 
 ```bash
+docker compose restart express
 docker compose down
 docker compose down -v
 ```
 
+- `docker compose restart express` reloads backend code and env changes.
 - `docker compose down` stops the stack but keeps MongoDB data.
-- `docker compose down -v` stops the stack and deletes the MongoDB volume data for this project.
+- `docker compose down -v` stops the stack and deletes the MongoDB volume for this project.
 
-## What This Project Does
+## What The App Does
 
-- Uses a React frontend as the player-facing campaign interface.
-- Uses an Express backend to manage campaigns, chat messages, and Gemini API calls.
-- Automatically falls back to Groq if Gemini hits quota or rate-limit style failures and Groq credentials are configured.
-- Uses MongoDB to persist campaign state, including chat history and important remembered facts.
-- Uses Docker Compose to run the full stack together.
+- Runs a D&D-style Dungeon Master chatbot in a React campaign interface.
+- Stores campaigns, chat history, inventory, and remembered world facts in MongoDB.
+- Uses Gemini as the primary model for DM responses.
+- Automatically falls back to Groq if Gemini hits quota or retryable provider errors and Groq credentials are configured.
+- Lets the player manually manage inventory with add, edit, and delete actions.
 
-## Core Idea
+## Main Features
 
-The main goal of this project is to create a roleplaying chatbot that feels more like a real Dungeon Master than a generic AI assistant.
+- Persistent campaigns:
+  A campaign can be reopened later from local storage and MongoDB state.
 
-Instead of only answering the latest message, the backend builds a DM-style prompt using:
+- AI Dungeon Master:
+  The assistant stays in DM mode and responds based on recent scenes, campaign setup, stored memory, and current inventory.
 
-- The campaign title and premise
-- The player's name and character name
-- Tone and preferred play style
+- Memory system:
+  The backend extracts important durable facts from scenes and saves them for future continuity.
+
+- Inventory system:
+  The backend tracks inventory from the story, and the frontend provides manual CRUD controls in inventory modals.
+
+- Provider awareness:
+  The active AI provider and model are recorded on the campaign and shown in the UI.
+
+- Error handling:
+  Provider failures are shown as closable toast notifications, with a full error viewer available on demand.
+
+## How The AI Works
+
+For each DM response, the backend builds a prompt from:
+
+- Campaign title and premise
+- Player name and character name
+- Tone and play style
 - Recent conversation history
-- Important stored memories from earlier scenes
+- Stored campaign memories
+- Current tracked inventory
 
-This helps Gemini stay in character, reference past events, and keep the campaign internally consistent.
+This helps the model behave more like a real Dungeon Master instead of a generic assistant.
 
-## How Memory Works
+## Fallback Behavior
 
-The backend stores each campaign in MongoDB. A campaign includes:
+The backend tries providers in this order:
 
-- Campaign metadata
-- A message history between the player and the Dungeon Master
-- A memory list of important facts
+1. Gemini
+2. Groq
 
-After each exchange, the backend asks Gemini to extract durable campaign facts from the latest scene. These memories can include:
+If Gemini returns quota, rate-limit, or similar retryable provider errors, the backend retries the request with Groq automatically.
 
-- Named NPCs
-- Locations
-- Quests
-- Items
-- Character-defining decisions
-- Important world facts
+This fallback is used for:
 
-Those memories are saved in MongoDB and reused in future prompts so the AI is less likely to forget what already happened.
+- DM replies
+- Memory extraction
+- Inventory extraction
+
+## Campaign Data Stored In MongoDB
+
+Each campaign stores:
+
+- Title
+- Player name
+- Character name
+- Campaign premise
+- Tone
+- Play style
+- Message history
+- Memory entries
+- Inventory items
+- Active AI provider and model
 
 ## Project Structure
 
 - `compose.yml`
-  Runs the React app, Express API, and MongoDB database together.
+  Defines the React, Express, and MongoDB services.
+
 - `REACT/`
-  The frontend Vite + React app where the player starts a campaign and chats with the DM.
+  The Vite + React frontend for campaign creation, story chat, inventory modals, toasts, and active-provider display.
+
 - `EXPRESS/`
-  The backend API that handles campaign creation, message flow, MongoDB persistence, and Gemini requests.
+  The Express backend for campaign APIs, AI provider orchestration, MongoDB persistence, memory extraction, and inventory tracking.
 
-## Main Flow
+## Current UI Overview
 
-1. The player opens the React app.
-2. The player creates a new campaign by entering the campaign title, character name, tone, and premise.
-3. The Express API creates a MongoDB campaign document.
-4. Gemini generates the opening scene as the Dungeon Master.
-5. The player replies through the chat UI.
-6. The backend sends recent context plus stored memories to Gemini.
-7. Gemini replies as the Dungeon Master.
-8. Important facts from the new scene are extracted and stored back into MongoDB.
+- Campaign setup screen before play begins
+- Fixed top bar during active play
+- Floating inventory button
+- Inventory list modal
+- Inventory create/edit modal
+- Quick choice buttons when the DM gives structured options
+- Jump-to-bottom control for long campaigns
+- Hoverable AI indicator showing the current provider and model
+- Dismissible error toast with full error detail modal
 
 ## Tech Stack
+
 - React
 - Vite
 - Express
 - Node.js
 - MongoDB
-- Docker
+- Mongoose
+- Docker Compose
 - Gemini API
+- Groq API

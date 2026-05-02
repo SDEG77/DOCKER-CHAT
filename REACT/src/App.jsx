@@ -1,4 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Backpack,
+  Bot,
+  ChevronsDown,
+  Eye,
+  Menu,
+  Minimize2,
+  RefreshCcw,
+  TriangleAlert,
+  X,
+} from 'lucide-react'
 import './App.css'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
@@ -24,9 +35,11 @@ function App() {
   const [editingInventoryId, setEditingInventoryId] = useState(null)
   const [inventorySaving, setInventorySaving] = useState(false)
   const [draft, setDraft] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [bootingCampaign, setBootingCampaign] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [errorDetail, setErrorDetail] = useState('')
+  const [errorViewerOpen, setErrorViewerOpen] = useState(false)
   const chatViewportRef = useRef(null)
 
   useEffect(() => {
@@ -42,12 +55,8 @@ function App() {
       return
     }
 
-    const viewport = chatViewportRef.current
     const frame = window.requestAnimationFrame(() => {
-      viewport.scrollTo({
-        top: viewport.scrollHeight,
-        behavior: 'auto',
-      })
+      scrollChatToBottom('auto')
     })
 
     return () => window.cancelAnimationFrame(frame)
@@ -68,7 +77,6 @@ function App() {
 
   async function loadCampaign(campaignId) {
     setLoading(true)
-    setError('')
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaignId}`)
@@ -81,7 +89,7 @@ function App() {
       setCampaign(data.campaign)
     } catch (err) {
       window.localStorage.removeItem(STORAGE_KEY)
-      setError(err.message)
+      showError(err)
     } finally {
       setLoading(false)
     }
@@ -90,7 +98,6 @@ function App() {
   async function createCampaign(event) {
     event.preventDefault()
     setBootingCampaign(true)
-    setError('')
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/campaigns`, {
@@ -111,7 +118,7 @@ function App() {
       window.localStorage.setItem(STORAGE_KEY, data.campaign._id)
       setDraft('')
     } catch (err) {
-      setError(err.message)
+      showError(err)
     } finally {
       setBootingCampaign(false)
     }
@@ -123,7 +130,6 @@ function App() {
     }
 
     setLoading(true)
-    setError('')
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/campaigns/${campaign._id}/messages`, {
@@ -147,7 +153,7 @@ function App() {
       setCampaign(data.campaign)
       setDraft('')
     } catch (err) {
-      setError(err.message)
+      showError(err)
     } finally {
       setLoading(false)
     }
@@ -171,7 +177,6 @@ function App() {
     }
 
     setInventorySaving(true)
-    setError('')
 
     try {
       const isEditing = Boolean(editingInventoryId)
@@ -199,7 +204,7 @@ function App() {
       setCampaign(data.campaign)
       closeInventoryEditor()
     } catch (err) {
-      setError(err.message)
+      showError(err)
     } finally {
       setInventorySaving(false)
     }
@@ -211,7 +216,6 @@ function App() {
     }
 
     setInventorySaving(true)
-    setError('')
 
     try {
       const response = await fetch(
@@ -233,7 +237,7 @@ function App() {
         closeInventoryEditor()
       }
     } catch (err) {
-      setError(err.message)
+      showError(err)
     } finally {
       setInventorySaving(false)
     }
@@ -270,6 +274,44 @@ function App() {
     setInventoryEditorOpen(false)
   }
 
+  function scrollChatToBottom(behavior = 'smooth') {
+    if (chatViewportRef.current) {
+      chatViewportRef.current.scrollTo({
+        top: chatViewportRef.current.scrollHeight,
+        behavior,
+      })
+    }
+
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior,
+    })
+  }
+
+  function showError(errorLike) {
+    const detail =
+      errorLike instanceof Error ? errorLike.message : String(errorLike || 'Unknown error')
+    const summary = detail.split('\n')[0].trim() || 'Something went wrong.'
+
+    setErrorDetail(detail)
+    setToast({
+      summary,
+      detail,
+    })
+  }
+
+  function dismissToast() {
+    setToast(null)
+  }
+
+  function openErrorViewer() {
+    setErrorViewerOpen(true)
+  }
+
+  function closeErrorViewer() {
+    setErrorViewerOpen(false)
+  }
+
   function startFreshCampaign() {
     window.localStorage.removeItem(STORAGE_KEY)
     setCampaign(null)
@@ -277,7 +319,7 @@ function App() {
     setInventoryOpen(false)
     closeInventoryEditor()
     setDraft('')
-    setError('')
+    dismissToast()
   }
 
   if (!campaign) {
@@ -290,8 +332,6 @@ function App() {
             Spin up a solo D&amp;D adventure with a persistent AI Dungeon Master
             and a cleaner tabletop-style interface.
           </p>
-
-          {error ? <div className="error-banner">{error}</div> : null}
 
           <form className="campaign-form" onSubmit={createCampaign}>
             <label>
@@ -374,6 +414,13 @@ function App() {
             </button>
           </form>
         </section>
+
+        <Toast toast={toast} onClose={dismissToast} onViewError={openErrorViewer} />
+        <ErrorViewer
+          open={errorViewerOpen}
+          detail={errorDetail}
+          onClose={closeErrorViewer}
+        />
       </div>
     )
   }
@@ -388,7 +435,7 @@ function App() {
           aria-label="Show controls"
           title="Show controls"
         >
-          <MenuIcon />
+          <Menu size={20} />
         </button>
       ) : null}
 
@@ -405,11 +452,20 @@ function App() {
               <button
                 type="button"
                 className="icon-button"
+                onClick={() => scrollChatToBottom('smooth')}
+                aria-label="Jump to bottom"
+                title="Jump to bottom"
+              >
+                <ChevronsDown size={18} />
+              </button>
+              <button
+                type="button"
+                className="icon-button"
                 onClick={() => setTopbarVisible(false)}
                 aria-label="Hide top bar"
                 title="Hide top bar"
               >
-                <MinimizeIcon />
+                <Minimize2 size={18} />
               </button>
               <button
                 type="button"
@@ -418,13 +474,11 @@ function App() {
                 aria-label="Start new campaign"
                 title="New campaign"
               >
-                <RefreshIcon />
+                <RefreshCcw size={18} />
               </button>
             </div>
           </header>
         ) : null}
-
-        {error ? <div className="error-banner">{error}</div> : null}
 
         <section className="chat-log" ref={chatViewportRef}>
           {campaign.messages.map((message) => (
@@ -472,6 +526,17 @@ function App() {
         </form>
       </main>
 
+      <div className="ai-indicator" aria-label="Current AI details">
+        <button type="button" className="ai-indicator-trigger" aria-label="Current AI">
+          <Bot size={18} />
+        </button>
+        <div className="ai-indicator-tooltip">
+          <span className="ai-indicator-label">Current AI</span>
+          <strong>{formatAiProvider(campaign)}</strong>
+          <span className="ai-indicator-model">{campaign.activeAiModel || 'No active model yet'}</span>
+        </div>
+      </div>
+
       <button
         type="button"
         className="floating-action inventory-fab"
@@ -479,7 +544,7 @@ function App() {
         aria-label="Open inventory"
         title="Inventory"
       >
-        <BackpackIcon />
+        <Backpack size={20} />
       </button>
 
       {inventoryOpen ? (
@@ -648,8 +713,69 @@ function App() {
           </section>
         </div>
       ) : null}
+
+      <Toast toast={toast} onClose={dismissToast} onViewError={openErrorViewer} />
+      <ErrorViewer open={errorViewerOpen} detail={errorDetail} onClose={closeErrorViewer} />
     </div>
   )
+}
+
+function Toast({ toast, onClose, onViewError }) {
+  if (!toast) {
+    return null
+  }
+
+  return (
+    <div className="toast">
+      <div className="toast-icon">
+        <TriangleAlert size={18} />
+      </div>
+      <div className="toast-copy">
+        <strong>Request failed</strong>
+        <p title={toast.summary}>{toast.summary}</p>
+      </div>
+      <div className="toast-actions">
+        <button type="button" className="ghost toast-button" onClick={onViewError}>
+          <Eye size={16} />
+          View error
+        </button>
+        <button type="button" className="ghost toast-icon-button" onClick={onClose} aria-label="Close toast">
+          <X size={16} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ErrorViewer({ open, detail, onClose }) {
+  if (!open || !detail) {
+    return null
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <section className="modal-panel error-viewer" onClick={(event) => event.stopPropagation()}>
+        <div className="inventory-header">
+          <div>
+            <p className="choice-label">Error details</p>
+            <h3>Full provider response</h3>
+          </div>
+          <button type="button" className="ghost inventory-close" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <pre className="error-detail">{detail}</pre>
+      </section>
+    </div>
+  )
+}
+
+function formatAiProvider(campaign) {
+  if (!campaign?.activeAiProvider) {
+    return 'No AI provider yet'
+  }
+
+  return campaign.activeAiProvider === 'groq' ? 'Groq' : 'Gemini'
 }
 
 function createEmptyInventoryForm() {
@@ -675,35 +801,3 @@ function extractChoices(content) {
 }
 
 export default App
-
-function BackpackIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M9 5.5a3 3 0 0 1 6 0V7h1.5A2.5 2.5 0 0 1 19 9.5v9A2.5 2.5 0 0 1 16.5 21h-9A2.5 2.5 0 0 1 5 18.5v-9A2.5 2.5 0 0 1 7.5 7H9V5.5Zm2 0V7h2V5.5a1 1 0 0 0-2 0ZM8 11a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2H9a1 1 0 0 1-1-1Zm1.5 3.5h5a1 1 0 1 1 0 2h-5a1 1 0 1 1 0-2Z" />
-    </svg>
-  )
-}
-
-function MenuIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M5 7a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H6A1 1 0 0 1 5 7Zm0 5a1 1 0 0 1 1-1h12a1 1 0 1 1 0 2H6a1 1 0 0 1-1-1Zm1 4a1 1 0 1 0 0 2h12a1 1 0 1 0 0-2H6Z" />
-    </svg>
-  )
-}
-
-function MinimizeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M6 12.5A1.5 1.5 0 0 1 7.5 11h9a1.5 1.5 0 1 1 0 3h-9A1.5 1.5 0 0 1 6 12.5Z" />
-    </svg>
-  )
-}
-
-function RefreshIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 5a7 7 0 0 1 6.32 4H16.5a1 1 0 1 0 0 2H21a1 1 0 0 0 1-1V5.5a1 1 0 1 0-2 0v1.27A9 9 0 1 0 21 12a1 1 0 1 0-2 0 7 7 0 1 1-7-7Z" />
-    </svg>
-  )
-}

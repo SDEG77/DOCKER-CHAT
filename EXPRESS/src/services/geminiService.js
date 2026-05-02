@@ -104,12 +104,13 @@ async function extractCampaignMemories({
     `ASSISTANT: ${assistantMessage}`,
   ].join('\n');
 
-  const rawText = await callPreferredModel({
+  const rawResult = await callPreferredModel({
     systemInstruction,
     prompt,
     temperature: 0.2,
     responseMimeType: 'application/json',
   });
+  const rawText = rawResult.text;
 
   try {
     const cleaned = rawText.replace(/```json|```/gi, '').trim();
@@ -172,12 +173,13 @@ async function extractInventoryUpdates({
     `ASSISTANT: ${assistantMessage}`,
   ].join('\n');
 
-  const rawText = await callPreferredModel({
+  const rawResult = await callPreferredModel({
     systemInstruction,
     prompt,
     temperature: 0.1,
     responseMimeType: 'application/json',
   });
+  const rawText = rawResult.text;
 
   try {
     const cleaned = rawText.replace(/```json|```/gi, '').trim();
@@ -310,7 +312,11 @@ async function callGemini({
     throw new Error('Gemini returned an empty response.');
   }
 
-  return text;
+  return {
+    provider: 'gemini',
+    model,
+    text,
+  };
 }
 
 async function callGroq({
@@ -361,7 +367,11 @@ async function callGroq({
     throw new Error('Groq returned an empty response.');
   }
 
-  return text;
+  return {
+    provider: 'groq',
+    model,
+    text,
+  };
 }
 
 function isAnyProviderConfigured() {

@@ -101,9 +101,13 @@ app.post('/api/campaigns', async (req, res) => {
         isOpeningScene: true,
       });
 
+      campaign.activeAiProvider = openingScene.provider;
+      campaign.activeAiModel = openingScene.model;
+      campaign.lastAiAt = new Date();
+
       assistantMessage = {
         role: 'assistant',
-        content: openingScene,
+        content: openingScene.text,
       };
     } else {
       assistantMessage = {
@@ -174,20 +178,24 @@ app.post('/api/campaigns/:campaignId/messages', async (req, res) => {
       isOpeningScene: false,
     });
 
+    campaign.activeAiProvider = reply.provider;
+    campaign.activeAiModel = reply.model;
+    campaign.lastAiAt = new Date();
+
     campaign.messages.push({
       role: 'assistant',
-      content: reply,
+      content: reply.text,
     });
 
     const newMemories = await extractCampaignMemories({
       campaign,
       userMessage: message,
-      assistantMessage: reply,
+      assistantMessage: reply.text,
     });
     const inventoryUpdates = await extractInventoryUpdates({
       campaign,
       userMessage: message,
-      assistantMessage: reply,
+      assistantMessage: reply.text,
     });
 
     mergeMemories(campaign, newMemories);

@@ -108,6 +108,20 @@ const campaignSchema = new mongoose.Schema(
       default: 'Roleplay-first adventure',
       trim: true,
     },
+    activeAiProvider: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    activeAiModel: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    lastAiAt: {
+      type: Date,
+      default: null,
+    },
     messages: {
       type: [messageSchema],
       default: [],
