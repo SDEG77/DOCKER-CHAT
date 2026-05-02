@@ -326,7 +326,7 @@ function App() {
     return (
       <div className="intro-shell">
         <section className="intro-panel">
-          <p className="eyebrow">Gemini Dungeon Master</p>
+          <p className="eyebrow">AI Dungeon Master</p>
           <h1>Start a campaign worth remembering.</h1>
           <p className="lede">
             Spin up a solo D&amp;D adventure with a persistent AI Dungeon Master
@@ -388,23 +388,25 @@ function App() {
             <div className="form-row">
               <label>
                 Tone
-                <input
+                <textarea
+                  rows="4"
                   value={campaignForm.tone}
                   onChange={(event) =>
                     setCampaignForm((current) => ({ ...current, tone: event.target.value }))
                   }
-                  placeholder="Dark intrigue, heroic fantasy..."
+                  placeholder="Describe the tone in more detail, like grim political fantasy, cozy adventure, tragic heroism, or eerie mystery..."
                 />
               </label>
 
               <label>
                 Play style
-                <input
+                <textarea
+                  rows="4"
                   value={campaignForm.playStyle}
                   onChange={(event) =>
                     setCampaignForm((current) => ({ ...current, playStyle: event.target.value }))
                   }
-                  placeholder="Roleplay-first, investigation-heavy..."
+                  placeholder="Describe how you want the campaign to play, like roleplay-heavy, tactical combat, slow-burn mystery, exploration, or character drama..."
                 />
               </label>
             </div>
