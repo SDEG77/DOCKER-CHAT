@@ -4,10 +4,27 @@ export async function fetchCampaign(campaignId) {
   return request(`/api/campaigns/${campaignId}`)
 }
 
+export async function fetchCampaigns() {
+  return request('/api/campaigns')
+}
+
 export async function createCampaign(campaignForm) {
   return request('/api/campaigns', {
     method: 'POST',
     body: JSON.stringify(campaignForm),
+  })
+}
+
+export async function updateCampaign(campaignId, campaignForm) {
+  return request(`/api/campaigns/${campaignId}`, {
+    method: 'PUT',
+    body: JSON.stringify(campaignForm),
+  })
+}
+
+export async function deleteCampaign(campaignId) {
+  return request(`/api/campaigns/${campaignId}`, {
+    method: 'DELETE',
   })
 }
 

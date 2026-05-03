@@ -1,19 +1,24 @@
 import {
   Backpack,
   Bot,
+  BookCopy,
   ChevronsDown,
   Menu,
   Minimize2,
-  RefreshCcw,
 } from 'lucide-react'
 import {
   InventoryEditorModal,
   InventoryModal,
 } from './feedback'
+import CampaignManagerModal from './CampaignManagerModal'
 import { formatAiMode, formatAiProvider } from '../utils/campaign'
 
 function SessionScreen({
   campaign,
+  campaigns,
+  campaignsLoading,
+  campaignManagerOpen,
+  campaignDeletingId,
   topbarVisible,
   setTopbarVisible,
   chatViewportRef,
@@ -36,8 +41,13 @@ function SessionScreen({
   onCloseInventoryEditor,
   onSaveInventoryItem,
   onDeleteInventoryItem,
+  onOpenCampaignManager,
+  onCloseCampaignManager,
+  onOpenCampaign,
+  onBeginCampaignCreate,
+  onBeginCampaignEdit,
+  onDeleteCampaign,
   onScrollChatToBottom,
-  onStartFreshCampaign,
 }) {
   return (
     <>
@@ -75,20 +85,20 @@ function SessionScreen({
               <button
                 type="button"
                 className="icon-button"
+                onClick={onOpenCampaignManager}
+                aria-label="Open campaign vault"
+                title="Campaign vault"
+              >
+                <BookCopy size={18} />
+              </button>
+              <button
+                type="button"
+                className="icon-button"
                 onClick={() => setTopbarVisible(false)}
                 aria-label="Hide top bar"
                 title="Hide top bar"
               >
                 <Minimize2 size={18} />
-              </button>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={onStartFreshCampaign}
-                aria-label="Start new campaign"
-                title="New campaign"
-              >
-                <RefreshCcw size={18} />
               </button>
             </div>
           </header>
@@ -180,6 +190,19 @@ function SessionScreen({
         inventorySaving={inventorySaving}
         onClose={onCloseInventoryEditor}
         onSubmit={onSaveInventoryItem}
+      />
+
+      <CampaignManagerModal
+        open={campaignManagerOpen}
+        campaign={campaign}
+        campaigns={campaigns}
+        campaignsLoading={campaignsLoading}
+        campaignDeletingId={campaignDeletingId}
+        onClose={onCloseCampaignManager}
+        onOpenCampaign={onOpenCampaign}
+        onBeginCampaignCreate={onBeginCampaignCreate}
+        onBeginCampaignEdit={onBeginCampaignEdit}
+        onDeleteCampaign={onDeleteCampaign}
       />
     </>
   )

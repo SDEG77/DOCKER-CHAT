@@ -1,13 +1,30 @@
+import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { formatRelativeCampaignActivity } from '../utils/campaign'
+
 function IntroScreen({
   aiInfoOpen,
+  campaign,
+  campaigns,
+  campaignsLoading,
   campaignForm,
-  bootingCampaign,
-  onCreateCampaign,
+  editingCampaignId,
+  campaignSaving,
+  campaignDeletingId,
+  onSaveCampaign,
   onCampaignFormChange,
   onOpenAiInfo,
+  onOpenCampaign,
+  onBeginCampaignCreate,
+  onBeginCampaignEdit,
+  onDeleteCampaign,
+  onCancelCampaignForm,
 }) {
+  const formHeading = editingCampaignId
+    ? 'Update this campaign'
+    : 'Start a campaign worth remembering.'
+
   return (
-    <div className="intro-layout">
+    <div className="intro-layout intro-layout-wide">
       <div className="intro-actions">
         <button type="button" className="ghost" onClick={onOpenAiInfo} aria-pressed={aiInfoOpen}>
           View AIs
@@ -16,13 +33,12 @@ function IntroScreen({
 
       <section className="intro-panel">
         <p className="eyebrow">AI Dungeon Master</p>
-        <h1>Start a campaign worth remembering.</h1>
+        <h1>{formHeading}</h1>
         <p className="lede">
-          Spin up a solo D&amp;D adventure with a persistent AI Dungeon Master
-          and a cleaner tabletop-style interface.
+          Create a fresh adventure, or jump back into any saved campaign without losing the others.
         </p>
 
-        <form className="campaign-form" onSubmit={onCreateCampaign}>
+        <form className="campaign-form" onSubmit={onSaveCampaign}>
           <label>
             Campaign title
             <input
@@ -109,11 +125,93 @@ function IntroScreen({
             </label>
           </div>
 
-          <button type="submit" className="primary" disabled={bootingCampaign}>
-            {bootingCampaign ? 'Summoning the campaign...' : 'Start campaign'}
-          </button>
+          <div className="campaign-form-actions">
+            <button type="submit" className="primary" disabled={campaignSaving}>
+              {campaignSaving
+                ? editingCampaignId
+                  ? 'Updating campaign...'
+                  : 'Summoning the campaign...'
+                : editingCampaignId
+                  ? 'Update campaign'
+                  : 'Start campaign'}
+            </button>
+            {(editingCampaignId || campaign) ? (
+              <button type="button" className="ghost" onClick={onCancelCampaignForm}>
+                Cancel
+              </button>
+            ) : null}
+          </div>
         </form>
       </section>
+
+      <aside className="campaign-library">
+        <div className="campaign-library-header">
+          <div>
+            <p className="eyebrow">Campaign vault</p>
+            <h3>Saved sessions</h3>
+          </div>
+          <button type="button" className="ghost" onClick={onBeginCampaignCreate}>
+            <Plus size={16} />
+            New
+          </button>
+        </div>
+
+        {campaignsLoading ? (
+          <p className="campaign-library-empty">Loading campaign vault...</p>
+        ) : campaigns.length > 0 ? (
+          <div className="campaign-library-list">
+            {campaigns.map((entry) => {
+              const isActive = campaign?._id === entry._id
+
+              return (
+                <article key={entry._id} className={`campaign-card ${isActive ? 'active' : ''}`}>
+                  <div className="campaign-card-copy">
+                    <div className="campaign-card-title-row">
+                      <strong>{entry.title}</strong>
+                      {isActive ? <span className="campaign-badge">Active</span> : null}
+                    </div>
+                    <p>{entry.characterName} led by {entry.playerName}</p>
+                    <p className="campaign-card-meta">
+                      {entry.messageCount} messages / {entry.memoryCount} memories / {entry.inventoryCount} items
+                    </p>
+                    <p className="campaign-card-meta">
+                      Last touched {formatRelativeCampaignActivity(entry)}
+                    </p>
+                  </div>
+                  <div className="campaign-card-actions">
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => void onOpenCampaign(entry._id)}
+                    >
+                      Open
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => onBeginCampaignEdit(entry)}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost inventory-action danger"
+                      onClick={() => void onDeleteCampaign(entry._id)}
+                      disabled={campaignDeletingId === entry._id}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <p className="campaign-library-empty">
+            No campaigns yet. Your first one will show up here once created.
+          </p>
+        )}
+      </aside>
 
       <p className="intro-credit">Sigrae Derf Gabriel</p>
     </div>

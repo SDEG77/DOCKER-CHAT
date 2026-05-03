@@ -51,3 +51,33 @@ export function formatAiMode(campaign) {
 
   return 'Primary provider'
 }
+
+export function formatRelativeCampaignActivity(campaign) {
+  const source = campaign?.updatedAt || campaign?.lastAiAt || campaign?.createdAt
+
+  if (!source) {
+    return 'No activity yet'
+  }
+
+  const time = new Date(source).getTime()
+
+  if (Number.isNaN(time)) {
+    return 'No activity yet'
+  }
+
+  const elapsedMs = Date.now() - time
+  const minutes = Math.max(1, Math.floor(elapsedMs / 60000))
+
+  if (minutes < 60) {
+    return `${minutes}m ago`
+  }
+
+  const hours = Math.floor(minutes / 60)
+
+  if (hours < 24) {
+    return `${hours}h ago`
+  }
+
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}

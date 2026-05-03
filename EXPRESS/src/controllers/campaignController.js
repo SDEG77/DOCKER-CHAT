@@ -6,11 +6,49 @@ const {
   isAnyProviderConfigured,
 } = require('../services/geminiService');
 const {
+  buildCampaignSummary,
   buildInventoryItem,
   createSetupMemories,
   mergeInventory,
   mergeMemories,
+  syncSetupMemories,
 } = require('../utils/campaignState');
+
+async function listCampaigns(req, res) {
+  try {
+    const campaigns = await Campaign.aggregate([
+      {
+        $project: {
+          title: 1,
+          playerName: 1,
+          characterName: 1,
+          campaignIdea: 1,
+          tone: 1,
+          playStyle: 1,
+          activeAiProvider: 1,
+          activeAiModel: 1,
+          activeAiMode: 1,
+          lastAiAt: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          messageCount: { $size: '$messages' },
+          memoryCount: { $size: '$memories' },
+          inventoryCount: { $size: '$inventory' },
+        },
+      },
+      {
+        $sort: { updatedAt: -1 },
+      },
+    ]);
+
+    return res.json({
+      campaigns: campaigns.map(buildCampaignSummary),
+    });
+  } catch (error) {
+    console.error('Failed to list campaigns:', error);
+    return res.status(500).json({ error: 'Failed to list campaigns.' });
+  }
+}
 
 async function getCampaign(req, res) {
   try {
@@ -75,6 +113,72 @@ async function createCampaign(req, res) {
   } catch (error) {
     console.error('Failed to create campaign:', error);
     return res.status(500).json({ error: 'Failed to create campaign.' });
+  }
+}
+
+async function updateCampaign(req, res) {
+  try {
+    const campaign = await Campaign.findById(req.params.campaignId);
+
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found.' });
+    }
+
+    const {
+      title,
+      playerName,
+      characterName,
+      campaignIdea,
+      tone,
+      playStyle,
+    } = req.body;
+
+    if (!title || !playerName || !characterName || !campaignIdea) {
+      return res.status(400).json({
+        error: 'title, playerName, characterName, and campaignIdea are required.',
+      });
+    }
+
+    campaign.title = title.trim();
+    campaign.playerName = playerName.trim();
+    campaign.characterName = characterName.trim();
+    campaign.campaignIdea = campaignIdea.trim();
+    campaign.tone = tone?.trim() || 'Heroic fantasy with dramatic choices';
+    campaign.playStyle = playStyle?.trim() || 'Roleplay-first adventure';
+
+    syncSetupMemories(campaign, {
+      campaignIdea: campaign.campaignIdea,
+      characterName: campaign.characterName,
+      playerName: campaign.playerName,
+    });
+
+    await campaign.save();
+
+    return res.json({ campaign });
+  } catch (error) {
+    console.error('Failed to update campaign:', error);
+    return res.status(500).json({
+      error: 'Failed to update campaign.',
+    });
+  }
+}
+
+async function deleteCampaign(req, res) {
+  try {
+    const campaign = await Campaign.findByIdAndDelete(req.params.campaignId);
+
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campaign not found.' });
+    }
+
+    return res.json({
+      deletedCampaignId: req.params.campaignId,
+    });
+  } catch (error) {
+    console.error('Failed to delete campaign:', error);
+    return res.status(500).json({
+      error: 'Failed to delete campaign.',
+    });
   }
 }
 
@@ -266,6 +370,9 @@ module.exports = {
   addMessage,
   createCampaign,
   deleteInventoryItem,
+  deleteCampaign,
   getCampaign,
+  listCampaigns,
+  updateCampaign,
   updateInventoryItem,
 };

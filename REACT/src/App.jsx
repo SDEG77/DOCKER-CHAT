@@ -11,8 +11,14 @@ import { useCampaignSession } from './hooks/useCampaignSession'
 function App() {
   const {
     campaign,
+    campaigns,
+    campaignsLoading,
     campaignForm,
     setCampaignForm,
+    editingCampaignId,
+    campaignManagerOpen,
+    campaignSaving,
+    campaignDeletingId,
     aiInfoOpen,
     setAiInfoOpen,
     topbarVisible,
@@ -26,13 +32,16 @@ function App() {
     draft,
     setDraft,
     loading,
-    bootingCampaign,
     toast,
     errorDetail,
     errorViewerOpen,
     chatViewportRef,
     quickChoices,
-    createCampaign,
+    saveCampaign,
+    openCampaign,
+    beginCampaignCreate,
+    beginCampaignEdit,
+    deleteCampaign,
     sendMessage,
     chooseOption,
     saveInventoryItem,
@@ -45,8 +54,10 @@ function App() {
     dismissToast,
     openErrorViewer,
     closeErrorViewer,
+    openCampaignManager,
+    closeCampaignManager,
+    cancelCampaignForm,
     scrollChatToBottom,
-    startFreshCampaign,
   } = useCampaignSession()
 
   if (!campaign) {
@@ -54,11 +65,21 @@ function App() {
       <div className="intro-shell">
         <IntroScreen
           aiInfoOpen={aiInfoOpen}
+          campaign={campaign}
+          campaigns={campaigns}
+          campaignsLoading={campaignsLoading}
           campaignForm={campaignForm}
-          bootingCampaign={bootingCampaign}
-          onCreateCampaign={createCampaign}
+          editingCampaignId={editingCampaignId}
+          campaignSaving={campaignSaving}
+          campaignDeletingId={campaignDeletingId}
+          onSaveCampaign={saveCampaign}
           onCampaignFormChange={setCampaignForm}
           onOpenAiInfo={() => setAiInfoOpen(true)}
+          onOpenCampaign={openCampaign}
+          onBeginCampaignCreate={beginCampaignCreate}
+          onBeginCampaignEdit={beginCampaignEdit}
+          onDeleteCampaign={deleteCampaign}
+          onCancelCampaignForm={cancelCampaignForm}
         />
 
         <AiInfoModal open={aiInfoOpen} onClose={() => setAiInfoOpen(false)} />
@@ -76,6 +97,10 @@ function App() {
     <div className="session-shell">
       <SessionScreen
         campaign={campaign}
+        campaigns={campaigns}
+        campaignsLoading={campaignsLoading}
+        campaignManagerOpen={campaignManagerOpen}
+        campaignDeletingId={campaignDeletingId}
         topbarVisible={topbarVisible}
         setTopbarVisible={setTopbarVisible}
         chatViewportRef={chatViewportRef}
@@ -98,8 +123,13 @@ function App() {
         onCloseInventoryEditor={closeInventoryEditor}
         onSaveInventoryItem={saveInventoryItem}
         onDeleteInventoryItem={deleteInventoryItem}
+        onOpenCampaignManager={openCampaignManager}
+        onCloseCampaignManager={closeCampaignManager}
+        onOpenCampaign={openCampaign}
+        onBeginCampaignCreate={beginCampaignCreate}
+        onBeginCampaignEdit={beginCampaignEdit}
+        onDeleteCampaign={deleteCampaign}
         onScrollChatToBottom={scrollChatToBottom}
-        onStartFreshCampaign={startFreshCampaign}
       />
 
       <Toast toast={toast} onClose={dismissToast} onViewError={openErrorViewer} />

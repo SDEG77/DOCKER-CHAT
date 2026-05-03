@@ -13,6 +13,14 @@
   width: min(920px, 100%);
 }
 
+.intro-layout-wide {
+  width: min(1320px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 20px;
+  align-items: start;
+}
+
 .intro-panel,
 .message,
 .composer,
@@ -52,16 +60,34 @@
   margin-top: 28px;
 }
 
+.campaign-form-actions,
+.campaign-library-header,
+.campaign-card-title-row,
+.campaign-card-actions {
+  display: flex;
+  align-items: center;
+}
+
+.campaign-form-actions,
+.campaign-card-actions {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .intro-actions {
   position: fixed;
-  top: 18px;
   right: 18px;
+  bottom: 72px;
   z-index: 35;
 }
 
+.intro-actions .ghost {
+  backdrop-filter: blur(14px);
+}
+
 .intro-credit {
-  position: fixed;
   right: 18px;
+  position: fixed;
   bottom: 18px;
   z-index: 35;
   margin: 0;
@@ -73,6 +99,69 @@
   border-radius: 999px;
   background: rgba(27, 18, 13, 0.92);
   backdrop-filter: blur(14px);
+}
+
+.campaign-library {
+  border: 1px solid var(--edge);
+  background: linear-gradient(180deg, rgba(34, 21, 16, 0.96), rgba(22, 14, 11, 0.98));
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(10, 6, 4, 0.16);
+  padding: 24px;
+  min-height: 100%;
+}
+
+.campaign-library-header {
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.campaign-library-list {
+  display: grid;
+  gap: 12px;
+}
+
+.campaign-library-empty,
+.campaign-card-meta {
+  color: var(--text-soft);
+}
+
+.campaign-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(218, 188, 138, 0.16);
+  background: rgba(255, 248, 232, 0.04);
+}
+
+.campaign-card.active {
+  border-color: rgba(241, 187, 99, 0.35);
+  background:
+    radial-gradient(circle at top left, rgba(241, 187, 99, 0.12), transparent 55%),
+    rgba(255, 248, 232, 0.05);
+}
+
+.campaign-card-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.campaign-card-title-row {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.campaign-card-copy strong {
+  color: var(--text-strong);
+}
+
+.campaign-card-actions {
+  justify-content: flex-start;
+}
+
+.campaign-manager-modal {
+  width: min(920px, 100%);
 }
 
 .ai-info-modal {
@@ -682,6 +771,10 @@
     grid-template-columns: 1fr;
   }
 
+  .intro-layout-wide {
+    grid-template-columns: 1fr;
+  }
+
 
   .session-stage.with-topbar {
     min-height: calc(100vh - 36px);
@@ -708,8 +801,8 @@
   }
 
   .intro-actions {
-    top: 12px;
     right: 18px;
+    bottom: 72px;
   }
 
   .inventory-fab {

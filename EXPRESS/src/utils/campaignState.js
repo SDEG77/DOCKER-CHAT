@@ -17,6 +17,56 @@ function createSetupMemories({
   ];
 }
 
+function syncSetupMemories(campaign, {
+  campaignIdea,
+  characterName,
+  playerName,
+}) {
+  const setupMemories = createSetupMemories({
+    campaignIdea,
+    characterName,
+    playerName,
+  });
+
+  for (const setupMemory of setupMemories) {
+    const existingMemory = campaign.memories.find(
+      (memory) => memory.source === 'setup' && memory.kind === setupMemory.kind,
+    );
+
+    if (existingMemory) {
+      existingMemory.content = setupMemory.content;
+      existingMemory.lastReinforcedAt = new Date();
+      continue;
+    }
+
+    campaign.memories.push({
+      ...setupMemory,
+      lastReinforcedAt: new Date(),
+    });
+  }
+}
+
+function buildCampaignSummary(campaign) {
+  return {
+    _id: campaign._id,
+    title: campaign.title,
+    playerName: campaign.playerName,
+    characterName: campaign.characterName,
+    tone: campaign.tone,
+    playStyle: campaign.playStyle,
+    campaignIdea: campaign.campaignIdea,
+    activeAiProvider: campaign.activeAiProvider,
+    activeAiModel: campaign.activeAiModel,
+    activeAiMode: campaign.activeAiMode,
+    lastAiAt: campaign.lastAiAt,
+    createdAt: campaign.createdAt,
+    updatedAt: campaign.updatedAt,
+    messageCount: campaign.messageCount ?? campaign.messages?.length ?? 0,
+    memoryCount: campaign.memoryCount ?? campaign.memories?.length ?? 0,
+    inventoryCount: campaign.inventoryCount ?? campaign.inventory?.length ?? 0,
+  };
+}
+
 function mergeMemories(campaign, incomingMemories) {
   if (!Array.isArray(incomingMemories) || incomingMemories.length === 0) {
     return;
@@ -169,8 +219,10 @@ function normalizeInventoryStatus(status) {
 }
 
 module.exports = {
+  buildCampaignSummary,
   buildInventoryItem,
   createSetupMemories,
   mergeInventory,
   mergeMemories,
+  syncSetupMemories,
 };
