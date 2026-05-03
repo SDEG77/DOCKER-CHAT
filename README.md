@@ -127,10 +127,21 @@ Each campaign stores:
   Defines the React, Express, and MongoDB services.
 
 - `REACT/`
-  The Vite + React frontend for campaign creation, story chat, inventory modals, toasts, and active-provider display.
+  The Vite + React frontend.
+  Main areas:
+  `src/components/` for screen and modal UI,
+  `src/hooks/` for campaign session state,
+  `src/services/` for API calls,
+  `src/utils/` for shared campaign helpers.
 
 - `EXPRESS/`
-  The Express backend for campaign APIs, AI provider orchestration, MongoDB persistence, memory extraction, and inventory tracking.
+  The Express backend.
+  Main areas:
+  `src/routes/` for API route definitions,
+  `src/controllers/` for request handling,
+  `src/services/` for AI provider orchestration,
+  `src/utils/` for campaign memory and inventory logic,
+  `src/models/` for MongoDB schemas.
 
 ## Current UI Overview
 
